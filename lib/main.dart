@@ -11,12 +11,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Calculator',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Calculator'),
     );
   }
 }
@@ -31,70 +31,41 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<dynamic> inputList = [0];
   String output = '0';
-
-  void _handleClear() {
-    setState(() {
-      inputList = [0];
-      output = '0';
-    });
-  }
+  String _currentValue = '0';
+  String _operator = '';
+  bool _shouldClear = false;
 
   void _handlePress(String input) {
     setState(() {
-      if (_isOperator(input)) {
-        if (!_isOperator(output[output.length - 1])) {
-          inputList.add(input);
-          output += input;
+      if (input == 'C') {
+        output = '0';
+        _currentValue = '0';
+        _operator = '';
+        _shouldClear = false;
+      } else if (input == '+' || input == '-' || input == '*' || input == '/' || input == '^') {
+        if (_operator.isEmpty) {
+          _currentValue = output;
+        } else {
+          _calculate();
         }
+        _operator = input;
+        _shouldClear = true;
       } else if (input == '=') {
-        while (inputList.length > 2) {
-          double firstNumber = inputList.removeAt(0) as double;
-          String operator = inputList.removeAt(0);
-          double secondNumber = inputList.removeAt(0) as double;
-          double partialResult = 0;
-
-          switch (operator) {
-            case '+':
-              partialResult = firstNumber + secondNumber;
-              break;
-            case '-':
-              partialResult = firstNumber - secondNumber;
-              break;
-            case '*':
-              partialResult = firstNumber * secondNumber;
-              break;
-            case '/':
-              if (secondNumber != 0) {
-                partialResult = firstNumber / secondNumber;
-              }
-              break;
-            case '^':
-              partialResult = pow(firstNumber, secondNumber).toDouble();
-              break;
-          }
-
-          inputList.insert(0, partialResult);
-        }
-
-        output = '${inputList[0]}';
+        _calculate();
+        _operator = '';
       } else if (input == '√') {
         double number = double.parse(output);
-        double result = sqrt(number);
-        inputList = [result];
-        output = result.toString();
+        output = sqrt(number).toString();
+        _currentValue = output;
       } else {
-        double? inputNumber = double.tryParse(input);
-        if (inputNumber != null) {
-          if (!_isOperator(output[output.length - 1])) {
-            double lastNumber = (inputList.last as double);
-            lastNumber = lastNumber * 10 + inputNumber;
-            inputList.last = lastNumber;
-
-            output = output.substring(0, output.length - 1) + lastNumber.toString();
+        if (_shouldClear) {
+          output = input;
+          _shouldClear = false;
+        } else {
+          if (output == '0' && input != '.') {
+            output = input;
           } else {
-            inputList.add(inputNumber);
             output += input;
           }
         }
@@ -102,19 +73,74 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  bool _isOperator(String input) {
-    return ['+', '-', '*', '/', '^'].contains(input);
+  void _calculate() {
+    double firstNumber = double.parse(_currentValue);
+    double secondNumber = double.parse(output);
+    double result = 0;
+
+    switch (_operator) {
+      case '+':
+        result = firstNumber + secondNumber;
+        break;
+      case '-':
+        result = firstNumber - secondNumber;
+        break;
+      case '*':
+        result = firstNumber * secondNumber;
+        break;
+      case '/':
+        result = secondNumber != 0 ? firstNumber / secondNumber : double.infinity;
+        break;
+      case '^':
+        result = pow(firstNumber, secondNumber).toDouble();
+        break;
+    }
+
+    output = result.toString();
+    _currentValue = output;
+    _shouldClear = true;
+  }
+
+  Widget _buildButton(String text, {Color color = Colors.black}) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        backgroundColor: Colors.grey[200],
+        foregroundColor: color,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 25),
+      ),
+      onPressed: () => _handlePress(text),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Calculator")),
-      body: Container(
-        padding: EdgeInsets.all(16),
+      appBar: AppBar(title: Text(widget.title)),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
             Container(
+              margin: EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.5),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
               child: TextField(
                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.right,
@@ -126,52 +152,20 @@ class _MyHomePageState extends State<MyHomePage> {
             Expanded(
               child: GridView.count(
                 crossAxisCount: 4,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
                 children: <Widget>[
-                  for (var i = 1; i <= 9; i++)
-                    TextButton(
-                      child: Text("$i", style: TextStyle(fontSize: 25)),
-                      onPressed: () => _handlePress("$i"),
-                    ),
-                  TextButton(
-                    child: Text("0", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("0"),
-                  ),
-                  TextButton(
-                    child: Text(".", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("."),
-                  ),
-                  TextButton(
-                    child: Text("C", style: TextStyle(fontSize: 25)),
-                    onPressed: _handleClear,
-                  ),
-                  TextButton(
-                    child: Text("+", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("+"),
-                  ),
-                  TextButton(
-                    child: Text("-", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("-"),
-                  ),
-                  TextButton(
-                    child: Text("*", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("*"),
-                  ),
-                  TextButton(
-                    child: Text("/", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("/"),
-                  ),
-                  TextButton(
-                    child: Text("^", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("^"),
-                  ),
-                  TextButton(
-                    child: Text("√", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("√"),
-                  ),
-                  TextButton(
-                    child: Text("=", style: TextStyle(fontSize: 25)),
-                    onPressed: () => _handlePress("="),
-                  ),
+                  for (var i = 1; i <= 9; i++) _buildButton("$i"),
+                  _buildButton("0"),
+                  _buildButton(".", color: Colors.blue),
+                  _buildButton("C", color: Colors.red),
+                  _buildButton("+", color: Colors.blue),
+                  _buildButton("-", color: Colors.blue),
+                  _buildButton("*", color: Colors.blue),
+                  _buildButton("/", color: Colors.blue),
+                  _buildButton("^", color: Colors.blue),
+                  _buildButton("√", color: Colors.blue),
+                  _buildButton("=", color: Colors.green),
                 ],
               ),
             ),
